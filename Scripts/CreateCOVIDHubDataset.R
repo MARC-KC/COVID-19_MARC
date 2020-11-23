@@ -142,17 +142,17 @@ varTable <- tibble::tribble(
     "DeathsNew",                TRUE,         TRUE,       NA,
     "TestsNew",                 TRUE,         TRUE,       NA,
     "CovidNew",                 TRUE,         TRUE,       "CovidNew24HConfirmed + CovidNew24HSuspected",
-    "CovidTotal",               TRUE,         TRUE,       NA,
-    "BedsUsedOther",            FALSE,        TRUE,       "BedsUsed - CovidTotal",
-    "BedsAvailable",            FALSE,        TRUE,       NA,
-    "CovidICUTotal",            TRUE,         TRUE,       NA,
-    "BedsICUUsedOther",         FALSE,        TRUE,       "BedsICUUsed - CovidICUTotal",
-    "BedsICUAvailable",         FALSE,        TRUE,       NA,
-    "CovidVentUsed",            TRUE,         TRUE,       "CovidVentilatorsAdmittedUsed + CovidVentilatorsOverflowUsed",
-    "VentilatorsUsedOther",     FALSE,        TRUE,       "VentilatorsUsed - CovidVentilatorsAdmittedUsed - CovidVentilatorsOverflowUsed",
-    "VentilatorsAvailable",     FALSE,        TRUE,       NA,
-    "HospitalsReporting",       FALSE,        TRUE,       NA,
-    "HospitalsTotal",           FALSE,        TRUE,       NA
+    "CovidTotal",               TRUE,         FALSE,      NA,
+    "BedsUsedOther",            TRUE,         FALSE,      "BedsUsed - CovidTotal",
+    "BedsAvailable",            TRUE,         FALSE,      NA,
+    "CovidICUTotal",            TRUE,         FALSE,      NA,
+    "BedsICUUsedOther",         TRUE,         FALSE,      "BedsICUUsed - CovidICUTotal",
+    "BedsICUAvailable",         TRUE,         FALSE,      NA,
+    "CovidVentUsed",            TRUE,         FALSE,      "CovidVentilatorsAdmittedUsed + CovidVentilatorsOverflowUsed",
+    "VentilatorsUsedOther",     TRUE,         FALSE,      "VentilatorsUsed - CovidVentilatorsAdmittedUsed - CovidVentilatorsOverflowUsed",
+    "VentilatorsAvailable",     TRUE,         FALSE,      NA,
+    "HospitalsReporting",       TRUE,         TRUE,       NA,
+    "HospitalsTotal",           TRUE,         TRUE,       NA
 )
 
 
@@ -236,7 +236,7 @@ bi_7DayRollingLag <- bi_7DayRolling %>% dplyr::filter(Date <= (max(Date) - lagDa
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Weekly Thinned 7 Day Rolling With and Without Lag ####
-cat(crayon::blue("Exporting Thinned 7 day rolling averages and totals.\n"))
+cat(crayon::blue("Exporting thinned 7 day rolling averages and totals.\n"))
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 bi_7DayRollingThin <- bi_7DayRolling %>% dplyr::mutate(rankDate = rank(dplyr::desc(Date)), dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
     dplyr::filter(dayWeek == dayWeek[which.max(Date)]) 
