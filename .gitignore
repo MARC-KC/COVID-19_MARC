@@ -1,0 +1,8 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+Scripts/marcInternalFunctions.R
+Scripts/CreateCOVIDHubDatasetBatch.bat
+Scripts/CreateCOVIDHubDatasetBatchHelper.R
+Deliverables/*.xlsx

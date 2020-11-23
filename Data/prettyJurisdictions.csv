@@ -1,0 +1,33 @@
+Site,GeoID,NiceName,DisplayOrder,NiceUpperLevel,DiplayOrderUpperLevel,ICUBedsDisclaim,SourceLocation
+MARC,29,Missouri,1,Statewide,1,,https://health.mo.gov/living/healthcondiseases/communicable/novel-coronavirus/results.php
+MARC,20,Kansas,2,Statewide,1,,https://www.coronavirus.kdheks.gov/
+MARC,MARC,MARC Region,3,MARC Region Summaries,2,,
+MARC,20MARCReg,Kansas (Within MARC),4,MARC Region Summaries,2,,
+MARC,29MARCReg,Missouri (Within MARC),5,MARC Region Summaries,2,,
+MARC,20091,"Johnson, KS",6,Kansas (Within MARC),3,,https://jocogov.org/coronavirus-covid-19-update
+MARC,20103,"Leavenworth, KS",7,Kansas (Within MARC),3,,https://www.leavenworthcounty.gov/covid/default.asp#
+MARC,20121,"Miami, KS",8,Kansas (Within MARC),3,Not Reported,https://www.coronavirus.kdheks.gov/160/COVID-19-in-Kansas
+MARC,20209,"Wyandotte, KS",9,Kansas (Within MARC),3,,https://wyandotte-county-covid-19-hub-unifiedgov.hub.arcgis.com/
+MARC,29037,"Cass, MO",10,Missouri (Within MARC),4,,
+MARC,29037NoKC,"Cass, MO (No KC)",11,Missouri (Within MARC),4,,https://www.casscounty.com/2450/COVID-19
+MARC,29047,"Clay, MO",12,Missouri (Within MARC),4,,
+MARC,29047NoKC,"Clay, MO (No KC)",13,Missouri (Within MARC),4,,https://experience.arcgis.com/experience/34f9ef5e486b4ef3a0a1364c457944bb/
+MARC,29095,"Jackson, MO",14,Missouri (Within MARC),4,,
+MARC,29095NoKC,"Jackson, MO (No KC)",15,Missouri (Within MARC),4,,https://experience.arcgis.com/experience/34a6ef5efe664974a3c1866aa77fbb6d/
+MARC,2938000,"Kansas City, MO",16,Missouri (Within MARC),4,,https://covid-19-response-in-kcmo-kcmo.hub.arcgis.com/
+MARC,29165,"Platte, MO",17,Missouri (Within MARC),4,,
+MARC,29165NoKC,"Platte, MO (No KC)",18,Missouri (Within MARC),4,,https://www.plattecountyhealthdept.com/emergency.aspx
+MARC,29177,"Ray, MO",19,Missouri (Within MARC),4,Not Reported,http://mophep.maps.arcgis.com/apps/MapSeries/index.html?appid=8e01a5d8d8bd4b4f85add006f9e14a9d
+HCC,29,Missouri,1,Statewide,1,,
+HCC,HCC,N/S HCC Region,2,HCC Region Summaries,2,,
+HCC,HCCNorth,Northern HCC,3,HCC Region Summaries,2,,
+HCC,HCCSouth,Southern HCC,4,HCC Region Summaries,2,,
+HCC,29033,"Carroll, MO",5,Northern HCC,3,,
+HCC,29107,"Lafayette, MO",6,Northern HCC,3,,
+HCC,29177,"Ray, MO",7,Northern HCC,3,Not Reported,
+HCC,29195,"Saline, MO",8,Northern HCC,3,,
+HCC,29013,"Bates, MO",9,Southern HCC,4,,
+HCC,29015,"Benton, MO",10,Southern HCC,4,,
+HCC,29083,"Henry, MO",11,Southern HCC,4,,
+HCC,29101,"Johnson, MO",12,Southern HCC,4,,
+HCC,29159,"Pettis, MO",13,Southern HCC,4,,
