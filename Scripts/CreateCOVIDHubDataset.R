@@ -238,15 +238,15 @@ bi_7DayRollingLag <- bi_7DayRolling %>% dplyr::filter(Date <= (max(Date) - lagDa
 # Weekly Thinned 7 Day Rolling With and Without Lag ####
 cat(crayon::blue("Exporting thinned 7 day rolling averages and totals.\n"))
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-bi_7DayRollingThin <- bi_7DayRolling %>% dplyr::mutate(rankDate = rank(dplyr::desc(Date)), dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
+bi_7DayRollingThin <- bi_7DayRolling %>% dplyr::mutate(dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
     dplyr::filter(dayWeek == dayWeek[which.max(Date)]) 
 
-bi_7DayRollingThinLag <- bi_7DayRolling %>% dplyr::mutate(rankDate = rank(dplyr::desc(Date)), dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
+bi_7DayRollingThinLag <- bi_7DayRolling %>% dplyr::mutate(dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
     dplyr::filter(Date <= (max(Date) - lagDays)) %>% 
     dplyr::filter(dayWeek == dayWeek[which.max(Date)]) 
 
 #For displaying New Hospitalizations with a two day lag to account for weekend reporting lag
-bi_7DayRollingThinLagHosp <- bi_7DayRolling %>% dplyr::mutate(rankDate = rank(dplyr::desc(Date)), dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
+bi_7DayRollingThinLagHosp <- bi_7DayRolling %>% dplyr::mutate(dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
     dplyr::select(Jurisdiction, State, Region, GeoID, Date, CovidNew7DayTotal, CovidNew7DayAvg, HospitalsReporting7DayTotal, HospitalsReporting7DayAvg, HospitalsTotal7DayTotal, HospitalsTotal7DayAvg, dayWeek) %>% 
     dplyr::filter(Date <= (max(Date) - 2)) %>% 
     dplyr::filter(dayWeek == dayWeek[which.max(Date)]) 
