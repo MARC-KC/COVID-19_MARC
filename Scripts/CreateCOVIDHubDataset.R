@@ -33,7 +33,7 @@ installLoadPackages <- function(cranPackages = NULL, githubPackages = NULL, load
 # Install and Load Packages ####
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #Set packages needed
-cranPackages <- c("dplyr", "lubridate", "purrr", "stringr", "tibble", "readxl", "readr", "glue", "tidyr", "xlsx", "crayon", "rlang", "here")
+cranPackages <- c("dplyr", "lubridate", "purrr", "stringr", "tibble", "readxl", "readr", "glue", "tidyr", "crayon", "rlang", "here")
 githubPackages <- c("yonghah/esri2sf", "MARC-KC/marcR")
 
 #Check if packages are installed and install if missing
