@@ -81,8 +81,8 @@ GeoIDs_okayHospital <- GeoIDs_base[!(GeoIDs_base %in% GeoIDs_restrictHospital)] 
 # How many days lag should be imposed on the data? This is important so we don't create trends based on incomplete data.
 lagDays <- 10
 
-#Name of the output file. Must end in '.xlsx'
-outputFileName <- "powerBi_CovidHub_Dataset.xlsx"
+#Name of the output folder
+outputFolderName <- "powerBi_CovidHub_Dataset"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -241,11 +241,14 @@ cat(crayon::blue("Exporting thinned 7 day rolling averages and totals.\n"))
 bi_7DayRollingThin <- bi_7DayRolling %>% dplyr::mutate(rankDate = rank(dplyr::desc(Date)), dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
     dplyr::filter(dayWeek == dayWeek[which.max(Date)]) 
 
-
-
-
 bi_7DayRollingThinLag <- bi_7DayRolling %>% dplyr::mutate(rankDate = rank(dplyr::desc(Date)), dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
     dplyr::filter(Date <= (max(Date) - lagDays)) %>% 
+    dplyr::filter(dayWeek == dayWeek[which.max(Date)]) 
+
+#For displaying New Hospitalizations with a two day lag to account for weekend reporting lag
+bi_7DayRollingThinLagHosp <- bi_7DayRolling %>% dplyr::mutate(rankDate = rank(dplyr::desc(Date)), dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
+    dplyr::select(Jurisdiction, State, Region, GeoID, Date, CovidNew7DayTotal, CovidNew7DayAvg, HospitalsReporting7DayTotal, HospitalsReporting7DayAvg, HospitalsTotal7DayTotal, HospitalsTotal7DayAvg, dayWeek) %>% 
+    dplyr::filter(Date <= (max(Date) - 2)) %>% 
     dplyr::filter(dayWeek == dayWeek[which.max(Date)]) 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -442,26 +445,21 @@ bi_PrettyJurisdictions_HCC <- prettyJurisdictions %>% dplyr::filter(Site == 'HCC
 
 
 
-
-
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# Export Power Bi datasets to Excel ####
+# Export Power Bi datasets to CSVs ####
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 biObjects <- ls() %>% stringr::str_subset("^bi_")
 
-cat(paste0(crayon::green("Exporting", length(biObjects), paste0("sheets to '", here::here("Deliverables", outputFileName), "'.
-Please be patient as this takes a little bit of time.\n")),
-crayon::yellow("You may get a few warinings starting with 'An illegal reflective access operation has occurred' when writing the second sheet. \nThis is due to a bug in the xlsx package or the Apache POI software that xlsx uses to write to an Excel file. \nThe xlsx document should output without error despite the warning.\n")))
+cat(crayon::green("Exporting", length(biObjects), paste0("csv files to '", here::here("Deliverables", outputFolderName))))
 walk(seq_along(biObjects), ~{
-    sheetName <- biObjects[.x] %>% stringr::str_remove("^bi_")
-    cat(crayon::blue("Saving sheet:", sheetName, paste0("(", .x, "/", length(biObjects), ")\n")))
-    append <- .x != 1
-    xlsx::write.xlsx(x = eval(parse(text=paste0("as.data.frame(", biObjects[.x], ")"))), file = here::here("Deliverables", outputFileName), sheetName = sheetName, row.names = FALSE, append = append, showNA = FALSE)
+    fileName <- biObjects[.x] %>% stringr::str_remove("^bi_")
+    cat(crayon::blue("Saving file:", paste0(fileName, ".csv"), paste0("(", .x, "/", length(biObjects), ")\n")))
+    dir.create(here::here("Deliverables", outputFolderName), recursive = TRUE, showWarnings = FALSE)
+    readr::write_csv(x = eval(parse(text=paste0("as.data.frame(", biObjects[.x], ")"))), file = here::here("Deliverables", outputFolderName, paste0(fileName, ".csv")), na = "")
 })
 cat(crayon::green("Export Completed Successfully\n"))
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 
-
-
+            
