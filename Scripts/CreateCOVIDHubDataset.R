@@ -451,10 +451,11 @@ bi_PrettyJurisdictions_HCC <- prettyJurisdictions %>% dplyr::filter(Site == 'HCC
 biObjects <- ls() %>% stringr::str_subset("^bi_")
 
 cat(crayon::green("Exporting", length(biObjects), paste0("csv files to '", here::here("Deliverables", outputFolderName))))
+if (dir.exists(here::here("Deliverables", outputFolderName))) unlink(here::here("Deliverables", outputFolderName), recursive = TRUE)
+dir.create(here::here("Deliverables", outputFolderName), recursive = TRUE, showWarnings = FALSE)
 walk(seq_along(biObjects), ~{
     fileName <- biObjects[.x] %>% stringr::str_remove("^bi_")
     cat(crayon::blue("Saving file:", paste0(fileName, ".csv"), paste0("(", .x, "/", length(biObjects), ")\n")))
-    dir.create(here::here("Deliverables", outputFolderName), recursive = TRUE, showWarnings = FALSE)
     readr::write_csv(x = eval(parse(text=paste0("as.data.frame(", biObjects[.x], ")"))), file = here::here("Deliverables", outputFolderName, paste0(fileName, ".csv")), na = "")
 })
 cat(crayon::green("Export Completed Successfully\n"))
