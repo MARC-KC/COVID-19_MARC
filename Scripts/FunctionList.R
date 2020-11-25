@@ -24,13 +24,13 @@ downloadBaseData <- function(type = c("CDT", "Hospital"), source = "COVIDv2REST"
     #Download Cases, Deaths, Tests Data
     if (type == "CDT") {
       cat(crayon::yellow("Downloading Cases, Deaths, and Tests data from https://gis2.marc2.org/arcgis/rest/services/HumanServices/COVIDv2/MapServer/6\n"))
-      out <- esri2sf::esri2df("https://gis2.marc2.org/arcgis/rest/services/HumanServices/COVIDv2/MapServer/6") %>% dplyr::mutate(Date = marcR::epoch2Datetime(Date) %>% as.Date())
+      out <- esri2sf::esri2df("https://gis2.marc2.org/arcgis/rest/services/HumanServices/COVIDv2/MapServer/6") %>% dplyr::mutate(Date = marcR::epoch2Datetime(Date) %>% as.Date()) %>% dplyr::select(-ESRI_OID)
     }
     
     #Download Hospital data
     if (type == "Hospital") {
       cat(crayon::yellow("Downloading Hospital data from https://gis2.marc2.org/arcgis/rest/services/HumanServices/COVIDv2/MapServer/7\n"))
-      out <- esri2sf::esri2df("https://gis2.marc2.org/arcgis/rest/services/HumanServices/COVIDv2/MapServer/7") %>% dplyr::mutate(EntryDate = marcR::epoch2Datetime(Date) %>% as.Date()) %>% dplyr::select(-Date)
+      out <- esri2sf::esri2df("https://gis2.marc2.org/arcgis/rest/services/HumanServices/COVIDv2/MapServer/7") %>% dplyr::mutate(EntryDate = marcR::epoch2Datetime(Date) %>% as.Date()) %>% dplyr::select(-Date) %>% dplyr::select(-ESRI_OID)
     }
   }
   
