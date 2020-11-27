@@ -420,6 +420,23 @@ bi_Hospital7DayAvgMostRecent <- bi_Hospital7DayAvg %>% dplyr::group_by(GeoID) %>
 
 
 
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# COP Table ####
+# Used to create the main dynamic table with data on the COP page
+cat(crayon::blue("Exporting COP comparison table with the formatted names.\n"))
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+bi_COPTable <- list(
+    COPtable(cdtHospSum7DayRollingData, popTable, days = 7, lagDays = 10, percentChangeKPI = 5),
+    COPtable(cdtHospSum14DayRollingData, popTable, days = 14, lagDays = 10, percentChangeKPI = 5),
+    COPtable(cdtHospSum7DayRollingData, popTable, days = 7, lagDays = 0, percentChangeKPI = 5),
+    COPtable(cdtHospSum14DayRollingData, popTable, days = 14, lagDays = 0, percentChangeKPI = 5)
+) %>% dplyr::bind_rows()
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # PrettyJurisdictions ####
@@ -434,7 +451,16 @@ bi_PrettyJurisdictions_HCC <- prettyJurisdictions %>% dplyr::filter(Site == 'HCC
 
 
 
-
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# HelperTable ####
+# Used to help create measures in Power BI
+cat(crayon::blue("Exporting helper table for PowerBI measures.\n"))
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+bi_HelperTable <- tibble::tribble(
+    ~HelperID,          ~DateTime, 
+    "LastExport",         Sys.time()
+)
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 

@@ -54,6 +54,19 @@ sumNA <- function(vec) {
 
 
 
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# FN - mutateCalcString - Allows a mutation given a string for the caclulation side of the mutation ####
+#  Used within rollAvgXDays and COPtable####
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+mutateCalcString <- function(df, mutateName, mutateCalc) {
+  mutateString = glue::glue("df${mutateName} = with(df, ({mutateCalc}))")
+  for (i in 1:length(mutateString)) {
+    eval(parse(text=mutateString[i]))
+  }
+  return(df)
+} 
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -231,12 +244,9 @@ rollingXdayCalcs <- function(df, dateCol, calcCol, Xdays = 7, total = TRUE, aver
 rollAvgXDays <- function(df, numDays = 7, varTable) {
   
   #Create Missing Calculated Variables
-  calcTab <- varTable %>% dplyr::select(variable, CalcString) %>% dplyr::filter(!is.na(CalcString)) %>%
-    dplyr::mutate(CalcString = purrr::map2_chr(CalcString, variable, ~paste0("df$",.y," = with(df, (", .x, "))")))
+  calcTab <- varTable %>% dplyr::select(variable, CalcString) %>% dplyr::filter(!is.na(CalcString)) 
   
-  for (i in 1:nrow(calcTab)) {
-    eval(parse(text=calcTab$CalcString[i]))
-  }
+  df <- df %>% mutateCalcString(calcTab$variable, calcTab$CalcString) 
   
   
   #Create previous date column (startDate)
@@ -311,7 +321,131 @@ averageHospData <- function(df) {
 
 
 
-
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# FNs - COPtable - Creates data formatted for COP table ####
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+COPtable <- function(df, popTable, days, lagDays, percentChangeKPI = 5) {
+  
+  #Variables that can be changed to add more features
+  measureTable <- tibble::tribble(
+    ~measureName,         ~Avg_Total,  ~measureDisplayName,   ~upGood,  ~PerCapita,
+    "CasesNew",           "Total",     "Cases",               FALSE,    TRUE,
+    "DeathsNew",          "Total",     "Deaths",              FALSE,    TRUE,
+    "TestsNew",           "Total",     "Tests",               TRUE,     TRUE
+  ) %>% dplyr::mutate(fullMeasureName = glue::glue("{measureName}{days}Day{Avg_Total}"))
+  
+  
+  
+  
+  #Join Base df and popTable and Organize Main Columns
+  df <- df %>% dplyr::left_join(popTable, by = "GeoID") %>% 
+    dplyr::filter(Date <= (max(Date) - lagDays)) %>% 
+    dplyr::select(c("Jurisdiction", "State", "Region", "GeoID", "Date", glue::glue_data(measureTable, "{measureTable$measureName}{days}Day{Avg_Total}"), "Population"))
+  
+  #Create Per Capitia Columns, filter by the three dates needed for further calculations, and rename original columns
+  calcTable <- measureTable %>% dplyr::filter(PerCapita) %>% 
+    mutate(perCapitaCalcName = glue::glue("{measureDisplayName}Per100K"),
+           perCapitaCalc = glue::glue("{fullMeasureName} / Population * 100000"))
+  
+  df <- df %>% 
+    dplyr::group_by(GeoID) %>% dplyr::mutate(rankDate = rank(dplyr::desc(Date))) %>% dplyr::ungroup() %>% 
+    mutateCalcString(calcTable$perCapitaCalcName, calcTable$perCapitaCalc) %>% 
+    dplyr::filter(rankDate %in% c(1, (days + 1), (days*2 + 1))) %>% 
+    dplyr::rename_with(.cols = all_of(measureTable$fullMeasureName), .fn = ~measureTable$measureName[measureTable$fullMeasureName == .x]) 
+  
+  #Lag the Date
+  df <- df %>% 
+    dplyr::group_by(GeoID) %>% 
+    dplyr::mutate(PreviousDate = dplyr::lag(Date, n = 1, order_by = Date)) %>% 
+    dplyr::ungroup()
+  
+  #Lag the base and per capita fields and just filter the last 2 dates
+  calcTable <- tibble::tibble(baseName = names(df)[!(names(df) %in% c('Jurisdiction', 'State', 'Region', 'GeoID', 'Date', 'PreviousDate', 'Population', 'rankDate'))],
+                              newName = glue::glue("Previous{baseName}"),
+                              calcString = glue::glue("dplyr::lag({baseName}, n=1, order_by=Date)"))
+  
+  df <- df %>% dplyr::group_by(GeoID) %>% dplyr::group_split() %>% 
+    purrr::map_dfr(~mutateCalcString(.x, calcTable$newName, calcTable$calcString)) %>% 
+    dplyr::filter(rankDate %in% c(1, (days + 1)))
+  
+  
+  #Calculate change in the base and per capita fields 
+  calcTable <- tibble::tibble(baseName = names(df)[!(names(df) %in% c('Jurisdiction', 'State', 'Region', 'GeoID', 'Date', 'PreviousDate', 'Population', 'rankDate'))] %>% stringr::str_subset("^Previous", negate = TRUE),
+                              prevName = glue::glue("Previous{baseName}"),
+                              newName = glue::glue("Change{baseName}"),
+                              calcString = glue::glue("{baseName} - {prevName}"))
+  df <- df %>% dplyr::group_by(GeoID) %>% dplyr::group_split() %>% 
+    purrr::map_dfr(~mutateCalcString(.x, calcTable$newName, calcTable$calcString))
+  
+  #Calculate ratio of change
+  calcTable <- tibble::tibble(baseName = measureTable$measureName, 
+                              prevName = glue::glue("Previous{baseName}"),
+                              newName = glue::glue("ChangeProp{baseName}"),
+                              calcString = glue::glue("({baseName} / dplyr::if_else({prevName} == 0, dplyr::if_else({baseName} == 0, 1, NA_real_), as.double({prevName}))) - 1"))
+  
+  df <- df %>% dplyr::group_by(GeoID) %>% dplyr::group_split() %>% 
+    purrr::map_dfr(~mutateCalcString(.x, calcTable$newName, calcTable$calcString)) %>% 
+    dplyr::filter(rankDate == 1) %>% dplyr::select(-rankDate)
+  
+  
+  #Pivot Table into Long Format
+  measureTablePer100K <- measureTable %>% dplyr::filter(PerCapita)
+  
+  spec <- list(tibble::tibble(.name=measureTable$measureName, .value = "CurrentNew", Measure = measureTable$measureDisplayName),
+               tibble::tibble(.name=stringr::str_subset(stringr::str_subset(names(df), "^Previous"), "Per100K|Date", negate = TRUE), .value = "PreviousNew", Measure = measureTable$measureDisplayName), 
+               tibble::tibble(.name=stringr::str_subset(stringr::str_subset(names(df), "^Change"), "Per100K|Prop", negate = TRUE), .value = "Change", Measure = measureTable$measureDisplayName), 
+               tibble::tibble(.name=stringr::str_subset(stringr::str_subset(names(df), "^Change"), "Prop"), .value = "ChangeProp", Measure = measureTable$measureDisplayName), 
+               tibble::tibble(.name=stringr::str_subset(stringr::str_subset(names(df), "Per100K$"), "^(Previous|Change)", negate = TRUE), .value = "CurrentNewPer100K", Measure = measureTablePer100K$measureDisplayName),
+               tibble::tibble(.name=stringr::str_subset(stringr::str_subset(names(df), "Per100K$"), "^Previous"), .value = "PreviousNewPer100K", Measure = measureTablePer100K$measureDisplayName),
+               tibble::tibble(.name=stringr::str_subset(stringr::str_subset(names(df), "Per100K$"), "^Change"), .value = "ChangePer100K", Measure = measureTablePer100K$measureDisplayName)
+  ) %>% 
+    dplyr::bind_rows()
+  
+  df <- df %>% tidyr::pivot_longer_spec(spec)
+  
+  
+  #Add Columns Needed for slicers, week change ratio, and rename Date to CurrentDate
+  df <- df %>% dplyr::mutate(DayPeriod = days, LagDays = lagDays) %>% 
+    dplyr::mutate(ChangeRatio = ChangeProp + 1) %>% 
+    dplyr::rename("CurrentDate" = "Date")
+  
+  
+  #Add KPI indicator and color
+  colorTable <- tibble::tribble(
+    ~color,        ~hex,
+    "green",       "#06C72F",
+    "red",         "#ff3a22",#FF0008",
+    "yellow",      "#E1E500"
+  )
+  
+  propChange <- percentChangeKPI/100
+  lowerPropChange <- 1 - propChange
+  upperPropChange <- 1 + propChange
+  
+  
+  
+  df <- df %>% dplyr::mutate(
+    KPI_ID = dplyr::case_when(
+      (ChangeRatio <= lowerPropChange & Measure %in% measureTable$measureDisplayName[!measureTable$upGood]) | (is.na(ChangeRatio) & Change < 0 & Measure %in% measureTable$measureDisplayName[!measureTable$upGood]) ~ 1,
+      (ChangeRatio <= lowerPropChange & Measure %in% measureTable$measureDisplayName[measureTable$upGood]) | (is.na(ChangeRatio) & Change < 0 & Measure %in% measureTable$measureDisplayName[measureTable$upGood]) ~ 2,
+      ChangeRatio > lowerPropChange & ChangeRatio < upperPropChange ~ 3,
+      (ChangeRatio >= upperPropChange & Measure %in% measureTable$measureDisplayName[measureTable$upGood]) | (is.na(ChangeRatio) & Change > 0 & Measure %in% measureTable$measureDisplayName[measureTable$upGood]) ~ 4,
+      (ChangeRatio >= upperPropChange & Measure %in% measureTable$measureDisplayName[!measureTable$upGood]) | (is.na(ChangeRatio) & Change > 0 & Measure %in% measureTable$measureDisplayName[!measureTable$upGood]) ~ 5,
+      TRUE ~ NA_real_
+    ),
+    KPI_Color = dplyr::case_when(
+      KPI_ID %in% c(1,4) ~ colorTable[colorTable$color == 'green',]$hex,
+      KPI_ID %in% c(2,5) ~ colorTable[colorTable$color == 'red',]$hex,
+      KPI_ID == 3 ~ colorTable[colorTable$color == 'yellow',]$hex,
+      TRUE ~ NA_character_
+    )
+  )
+  
+  
+  return(df)
+  
+}
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 
