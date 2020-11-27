@@ -36,13 +36,7 @@ installLoadPackages <- function(cranPackages = NULL, githubPackages = NULL, load
 cranPackages <- c("dplyr", "lubridate", "purrr", "stringr", "tibble", "readxl", "readr", "glue", "tidyr", "crayon", "rlang", "here")
 githubPackages <- c("yonghah/esri2sf", "MARC-KC/marcR")
 
-#Check if packages are installed and install if missing
-installLoadPackages(cranPackages, githubPackages, load = FALSE)
-
-#Increase Java Heap size for xlsx output.
-options(java.parameters = "-Xmx8000m")
-
-#Load needed packages into the environment
+#Check if packages are installed and install if missing. Then load needed packages into the environment
 installLoadPackages(cranPackages, githubPackages, load = TRUE)
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
