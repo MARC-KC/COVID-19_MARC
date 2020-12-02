@@ -419,14 +419,99 @@ bi_Hospital7DayAvgMostRecent <- bi_Hospital7DayAvg %>% dplyr::group_by(GeoID) %>
 # Used to create the main dynamic table with data on the COP page
 cat(crayon::blue("Exporting COP comparison table with the formatted names.\n"))
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+measureTable <- tibble::tribble(
+    ~measureName,         ~Avg_Total,  ~measureDisplayName,   ~upGood,  ~PerCapita,
+    "CasesNew",           "Total",     "Cases",               FALSE,    TRUE,
+    "DeathsNew",          "Total",     "Deaths",              FALSE,    TRUE,
+    "TestsNew",           "Total",     "Tests",               TRUE,     TRUE
+)
+
 bi_COPTable <- list(
-    COPtable(cdtHospSum7DayRollingData, popTable, days = 7, lagDays = 10, percentChangeKPI = 5),
-    COPtable(cdtHospSum14DayRollingData, popTable, days = 14, lagDays = 10, percentChangeKPI = 5),
-    COPtable(cdtHospSum7DayRollingData, popTable, days = 7, lagDays = 0, percentChangeKPI = 5),
-    COPtable(cdtHospSum14DayRollingData, popTable, days = 14, lagDays = 0, percentChangeKPI = 5)
+    COPtable(cdtHospSum7DayRollingData, popTable, days = 7, lagDays = 10, measureTable = measureTable, percentChangeKPI = 5),
+    COPtable(cdtHospSum14DayRollingData, popTable, days = 14, lagDays = 10, measureTable = measureTable, percentChangeKPI = 5),
+    COPtable(cdtHospSum7DayRollingData, popTable, days = 7, lagDays = 0, measureTable = measureTable, percentChangeKPI = 5),
+    COPtable(cdtHospSum14DayRollingData, popTable, days = 14, lagDays = 0, measureTable = measureTable, percentChangeKPI = 5)
 ) %>% dplyr::bind_rows()
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Testing Page tables ####
+# Used to create the tables for the tesing page. Mainly the need for negative vs positive tests
+cat(crayon::blue("Exporting tables for testing page.\n"))
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+varTable <- tibble::tribble(
+    ~variable,                  ~Avg,         ~Total,     ~CalcString, 
+    "CasesNew",                 TRUE,         TRUE,       NA,
+    "TestsNew",                 TRUE,         TRUE,       NA,
+    "TestsNegativeNew",         TRUE,         TRUE,       NA
+)
+
+
+bi_TestingPage7DayRolling <- cdtSumData %>% rollAvgXDays(df = ., numDays = 7, varTable = varTable) %>% 
+    dplyr::filter(Date <= max(Date) - lagDays) %>% 
+    dplyr::mutate(TestsPositivity = dplyr::if_else(TestsNew7DayTotal == 0, NA_real_, CasesNew7DayTotal / TestsNew7DayTotal))
+
+bi_TestingPage7DayRollingThin <- cdtSumData %>% rollAvgXDays(df = ., numDays = 7, varTable = varTable) %>% 
+    dplyr::filter(Date <= max(Date) - lagDays) %>% 
+    dplyr::mutate(dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
+    dplyr::filter(dayWeek == dayWeek[which.max(Date)]) %>% 
+    dplyr::select(-dayWeek) %>% 
+    dplyr::mutate(TestsPositivity = dplyr::if_else(TestsNew7DayTotal == 0, NA_real_, CasesNew7DayTotal / TestsNew7DayTotal))
+
+
+# bi_7DayRollingThinLag <- bi_7DayRolling %>% dplyr::mutate(dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
+#     dplyr::filter(Date <= (max(Date) - lagDays)) %>% 
+#     dplyr::filter(dayWeek == dayWeek[which.max(Date)]) 
+# %>% 
+    # dplyr::select(-c(Jurisdiction, State, Region)) %>% 
+    # dplyr::left_join(x = dplyr::select(cdtSumData, Jurisdiction, State, Region, GeoID, Date, CasesNew, TestsNew, TestsNegativeNew), y = ., by = c("GeoID", "Date"))
+
+# bi_TestingPage7DayRolling
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+
+
+
+
+
+
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Jurisdiction Bar Charts given time scenarios ####
+# Used as a Bridge table in the Power BI relationships
+cat(crayon::blue("Exporting jurisdiction bar chart data.\n"))
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+mostRecentGivenHelperTable <- tibble::tribble(
+    ~datasetName,         ~days, ~lagDays, ~keep,
+    "cdtHospSumData",     7,     lagDays,  "Both",
+    "cdtHospSumData",     14,    lagDays,  "Both",
+    "cdtHospSumData",     30,    lagDays,  "Both",
+    "bi_CDT_MostRecent",  NA,    NA,       "Both"
+)
+
+bi_JurisdictionBarCharts <- pmap_dfr(mostRecentGivenHelperTable, function(datasetName, days, lagDays, keep, ...) {
+    dataset <- eval(sym(datasetName))
+    
+    out <- mostRecentGivenTime(df = dataset, days=days, lagDays=lagDays)
+    # out <- mostRecentGivenTime(df = cdtHospSumData, days=days, lagDays=lagDays)
+    
+    if (keep == "Both") {
+        return(out)
+    } else if (keep == "Raw") {
+        return(dplyr::filter(out, Raw_Per100K == "Raw"))
+    } else if (keep == "Per100K") {
+        return(dplyr::filter(out, Raw_Per100K == "Per100K"))
+    } else {
+        warning("The argument keep must be one of 'Both', 'Raw', or 'Per100K'. Returning NULL")
+        return(NULL)
+    }
+}) 
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 
@@ -470,7 +555,7 @@ bi_HelperTable <- tibble::tribble(
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 biObjects <- ls() %>% stringr::str_subset("^bi_")
 
-cat(crayon::green("Exporting", length(biObjects), paste0("csv files to '", here::here("Deliverables", outputFolderName))))
+cat(crayon::green("Exporting", length(biObjects), paste0("csv files to '", here::here("Deliverables", outputFolderName), "\n")))
 if (dir.exists(here::here("Deliverables", outputFolderName))) unlink(here::here("Deliverables", outputFolderName), recursive = TRUE)
 dir.create(here::here("Deliverables", outputFolderName), recursive = TRUE, showWarnings = FALSE)
 walk(seq_along(biObjects), ~{
