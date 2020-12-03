@@ -256,58 +256,40 @@ cat(crayon::blue("Exporting 7 day comparison sheets.\n"))
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 measureTable <- tibble::tribble(
     ~measureName,                    ~upGood,
-    "CasesNew7DayAvg",               FALSE,
-    "CasesNew7DayTotal",             FALSE,
-    "DeathsNew7DayAvg",              FALSE,
-    "DeathsNew7DayTotal",            FALSE,
-    "TestsNew7DayAvg",               TRUE,
-    "TestsNew7DayTotal",             TRUE,
-    "CovidTotal7DayAvg",             FALSE,
-    "CovidNew7DayAvg",               FALSE,
-    "CovidNew7DayTotal",             FALSE,
-    "CovidICUTotal7DayAvg",          FALSE,
-    "CovidVentUsed7DayAvg",          FALSE
+    "CasesNew##DayAvg",               FALSE,
+    "CasesNew##DayTotal",             FALSE,
+    "DeathsNew##DayAvg",              FALSE,
+    "DeathsNew##DayTotal",            FALSE,
+    "TestsNew##DayAvg",               TRUE,
+    "TestsNew##DayTotal",             TRUE,
+    "CovidTotal##DayAvg",             FALSE,
+    "CovidNew##DayAvg",               FALSE,
+    "CovidNew##DayTotal",             FALSE,
+    "CovidICUTotal##DayAvg",          FALSE,
+    "CovidVentUsed##DayAvg",          FALSE
 )
 
 
 
-baseWeeklyComparison <- cdtHospSum7DayRollingData %>% 
-    tidyr::pivot_longer(cols = measureTable$measureName,
-                        names_to = "Measure",
-                        values_to = "CurrentWeekValue") %>% 
-    dplyr::select(Jurisdiction, State, Region, GeoID, Date, Measure, CurrentWeekValue) %>% 
-    dplyr::mutate(DatePrev = Date - 7) %>% 
-    dplyr::group_by(GeoID) %>% 
-    dplyr::mutate(PreviousWeekValue = dplyr::lag(CurrentWeekValue, n = length(unique(Measure))*7, order_by = Date)) %>% 
-    dplyr::mutate(WeekChange = CurrentWeekValue - PreviousWeekValue,
-                  WeekChangeRatio = CurrentWeekValue/dplyr::if_else(PreviousWeekValue == 0, NA_real_, PreviousWeekValue)) %>% 
-    dplyr::mutate(WeekChangeRatio = dplyr::if_else(WeekChange == 0 & PreviousWeekValue == 0, 1, WeekChangeRatio)) %>% 
-    dplyr::mutate(
-        KPI_ID = dplyr::case_when(
-            (WeekChangeRatio <= 0.95 & Measure %in% measureTable$measureName[!measureTable$upGood]) | (is.na(WeekChangeRatio) & WeekChange < 0 & Measure %in% measureTable$measureName[!measureTable$upGood]) ~ 1,
-            (WeekChangeRatio <= 0.95 & Measure %in% measureTable$measureName[measureTable$upGood]) | (is.na(WeekChangeRatio) & WeekChange < 0 & Measure %in% measureTable$measureName[measureTable$upGood]) ~ 2,
-            WeekChangeRatio > 0.95 & WeekChangeRatio < 1.05 ~ 3,
-            (WeekChangeRatio >= 1.05 & Measure %in% measureTable$measureName[measureTable$upGood]) | (is.na(WeekChangeRatio) & WeekChange > 0 & Measure %in% measureTable$measureName[measureTable$upGood]) ~ 4,
-            (WeekChangeRatio >= 1.05 & Measure %in% measureTable$measureName[!measureTable$upGood]) | (is.na(WeekChangeRatio) & WeekChange > 0 & Measure %in% measureTable$measureName[!measureTable$upGood]) ~ 5,
-            TRUE ~ NA_real_
-        )) %>% 
-    dplyr::mutate(dplyr::across(c(CurrentWeekValue, PreviousWeekValue, WeekChange, WeekChangeRatio, KPI_ID), ~dplyr::if_else(GeoID %in% GeoIDs_restrictHospital & stringr::str_detect(Measure, "^Covid"), NA_real_, .x)))
+baseWeeklyComparisonData <- cdtHospSum7DayRollingData %>% 
+    baseDaysComparison(., measureTable) 
+    
 
 
-bi_7DayComparison_MostRecent <- baseWeeklyComparison %>% 
+bi_7DayComparison_MostRecent <- baseWeeklyComparisonData %>% 
     dplyr::group_by(GeoID, Measure) %>% dplyr::mutate(rankID = rank(dplyr::desc(Date))) %>% dplyr::filter(rankID == 1) %>% dplyr::select(-rankID) %>% 
     dplyr::filter(GeoID %in% GeoIDs_base)
 
-bi_7DayComparison_MostRecent_Lag <- baseWeeklyComparison %>% dplyr::filter(Date <= (max(Date) - lagDays)) %>% 
+bi_7DayComparison_MostRecent_Lag <- baseWeeklyComparisonData %>% dplyr::filter(Date <= (max(Date) - lagDays)) %>% 
     dplyr::group_by(GeoID, Measure) %>% dplyr::mutate(rankID = rank(dplyr::desc(Date))) %>% dplyr::filter(rankID == 1) %>% dplyr::select(-rankID) %>% 
     dplyr::filter(GeoID %in% GeoIDs_base)
 
 
 
 
-bi_7DayComparison_Last6Weeks <- baseWeeklyComparison %>% dplyr::filter(Date >= (max(Date, na.rm = TRUE) - lubridate::weeks(6)))
+bi_7DayComparison_Last6Weeks <- baseWeeklyComparisonData %>% dplyr::filter(Date >= (max(Date, na.rm = TRUE) - lubridate::weeks(6)))
 
-bi_7DayComparison_Last6Weeks_Lag <- baseWeeklyComparison %>% dplyr::filter(Date >= ((max(Date, na.rm = TRUE) - lagDays) - lubridate::weeks(6)) & (Date <= ((max(Date, na.rm = TRUE) - lagDays))))
+bi_7DayComparison_Last6Weeks_Lag <- baseWeeklyComparisonData %>% dplyr::filter(Date >= ((max(Date, na.rm = TRUE) - lagDays) - lubridate::weeks(6)) & (Date <= ((max(Date, na.rm = TRUE) - lagDays))))
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -497,8 +479,7 @@ bi_JurisdictionBarCharts <- pmap_dfr(mostRecentGivenHelperTable, function(datase
     dataset <- eval(sym(datasetName))
     
     out <- mostRecentGivenTime(df = dataset, days=days, lagDays=lagDays)
-    # out <- mostRecentGivenTime(df = cdtHospSumData, days=days, lagDays=lagDays)
-    
+
     if (keep == "Both") {
         return(out)
     } else if (keep == "Raw") {
@@ -512,6 +493,68 @@ bi_JurisdictionBarCharts <- pmap_dfr(mostRecentGivenHelperTable, function(datase
 }) 
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Weekly Data Snapshot Data ####
+# All data needed for Weekly Data Snapshot
+cat(crayon::blue("Exporting Weekly Data Snapshot Data.\n"))
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bi_WDS_7DayRollingLag <- cdtHospSum7DayRollingData %>% dplyr::filter(Date <= max(Date) - lagDays) %>% 
+    dplyr::mutate(dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
+    dplyr::filter(dayWeek == 4) %>% dplyr::select(-dayWeek) %>% 
+    dplyr::mutate(TestsPositiveNew7DayAvgProportion = CasesNew7DayTotal/dplyr::if_else(TestsNew7DayTotal == 0, NA_integer_, TestsNew7DayTotal)) %>% 
+    dplyr::filter(GeoID %in% c('MARC', '20MARCReg', '29MARCReg'))
+
+
+bi_WDS_Last7Days <- bi_WDS_7DayRollingLag %>% 
+    dplyr::group_by(GeoID) %>% dplyr::filter(Date == max(Date)) %>% dplyr::ungroup()%>% 
+    dplyr::filter(GeoID == 'MARC')
+
+
+
+
+measureTable <- tibble::tribble(
+    ~measureName,                    ~upGood,
+    "CasesNew##DayAvg",               FALSE,
+    "CasesNew##DayTotal",             FALSE,
+    "DeathsNew##DayAvg",              FALSE,
+    "DeathsNew##DayTotal",            FALSE,
+    "TestsNew##DayAvg",               TRUE,
+    "TestsNew##DayTotal",             TRUE,
+    "CovidTotal##DayAvg",             FALSE,
+    "CovidNew##DayAvg",               FALSE,
+    "CovidNew##DayTotal",             FALSE
+)
+
+
+
+WDScomparison <- function(rollSumData, measureTable, days, lagDays) {
+    rollSumData %>% 
+        dplyr::mutate(dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
+        dplyr::filter(Date <= max(Date[dayWeek == 7])) %>% 
+        dplyr::select(-dayWeek) %>% 
+        baseDaysComparison(., measureTable, days = days) %>% 
+        dplyr::filter(Date <= (max(Date) - lagDays)) %>% 
+        dplyr::group_by(GeoID, Measure) %>% dplyr::mutate(rankID = rank(dplyr::desc(Date))) %>% dplyr::filter(rankID == 1) %>% dplyr::select(-rankID) %>% 
+        dplyr::filter(GeoID == 'MARC') %>% dplyr::ungroup() %>% 
+        dplyr::mutate(Days = days) %>% dplyr::rename_with(~stringr::str_remove(.x, "Week"), tidyr::contains("Week"))
+}
+
+bi_WDS_ComparisonTable <- list(
+    WDScomparison(cdtHospSum7DayRollingData, measureTable[stringr::str_detect(measureTable$measureName, "^Covid", negate = TRUE),], days = 7, lagDays = lagDays),
+    WDScomparison(cdtHospSum7DayRollingData, measureTable[stringr::str_detect(measureTable$measureName, "^Covid", negate = FALSE),], days = 7, lagDays = 2),
+    WDScomparison(cdtHospSum14DayRollingData, measureTable[stringr::str_detect(measureTable$measureName, "^Covid", negate = TRUE),], days = 14, lagDays = lagDays),
+    WDScomparison(cdtHospSum14DayRollingData, measureTable[stringr::str_detect(measureTable$measureName, "^Covid", negate = FALSE),], days = 14, lagDays = 2)
+) %>% dplyr::bind_rows() %>% 
+    dplyr::mutate(ChangeProp = ChangeRatio - 1)
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 
 

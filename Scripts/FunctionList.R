@@ -445,6 +445,45 @@ COPtable <- function(df, popTable, days, lagDays, measureTable, percentChangeKPI
 
 
 
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# FNs - baseDaysComparison - Creates base weekly comparison data ####
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+baseDaysComparison <- function(rollSumData, measureTable, days = 7) {
+  
+  measureTable <- measureTable %>% dplyr::mutate(measureName = stringr::str_replace(measureName, "##", as.character(days)))
+  
+  
+  rollSumData %>% tidyr::pivot_longer(cols = measureTable$measureName,
+                             names_to = "Measure",
+                             values_to = "CurrentWeekValue") %>% 
+    dplyr::select(Jurisdiction, State, Region, GeoID, Date, Measure, CurrentWeekValue) %>% 
+    dplyr::mutate(DatePrev = Date - days) %>% 
+    dplyr::group_by(GeoID) %>% 
+    dplyr::mutate(PreviousWeekValue = dplyr::lag(CurrentWeekValue, n = length(unique(Measure))*days, order_by = Date)) %>% 
+    dplyr::mutate(WeekChange = CurrentWeekValue - PreviousWeekValue,
+                  WeekChangeRatio = CurrentWeekValue/dplyr::if_else(PreviousWeekValue == 0, NA_real_, PreviousWeekValue)) %>% 
+    dplyr::mutate(WeekChangeRatio = dplyr::if_else(WeekChange == 0 & PreviousWeekValue == 0, 1, WeekChangeRatio)) %>% 
+    dplyr::mutate(
+      KPI_ID = dplyr::case_when(
+        (WeekChangeRatio <= 0.95 & Measure %in% measureTable$measureName[!measureTable$upGood]) | (is.na(WeekChangeRatio) & WeekChange < 0 & Measure %in% measureTable$measureName[!measureTable$upGood]) ~ 1,
+        (WeekChangeRatio <= 0.95 & Measure %in% measureTable$measureName[measureTable$upGood]) | (is.na(WeekChangeRatio) & WeekChange < 0 & Measure %in% measureTable$measureName[measureTable$upGood]) ~ 2,
+        WeekChangeRatio > 0.95 & WeekChangeRatio < 1.05 ~ 3,
+        (WeekChangeRatio >= 1.05 & Measure %in% measureTable$measureName[measureTable$upGood]) | (is.na(WeekChangeRatio) & WeekChange > 0 & Measure %in% measureTable$measureName[measureTable$upGood]) ~ 4,
+        (WeekChangeRatio >= 1.05 & Measure %in% measureTable$measureName[!measureTable$upGood]) | (is.na(WeekChangeRatio) & WeekChange > 0 & Measure %in% measureTable$measureName[!measureTable$upGood]) ~ 5,
+        TRUE ~ NA_real_
+      )) %>% 
+    dplyr::mutate(dplyr::across(c(CurrentWeekValue, PreviousWeekValue, WeekChange, WeekChangeRatio, KPI_ID), ~dplyr::if_else(GeoID %in% GeoIDs_restrictHospital & stringr::str_detect(Measure, "^Covid"), NA_real_, .x))) %>% 
+    dplyr::ungroup()
+}
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+
+
 
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
