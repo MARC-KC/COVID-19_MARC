@@ -472,6 +472,8 @@ mostRecentGivenHelperTable <- tibble::tribble(
     "cdtHospSumData",     7,     lagDays,  "Both",
     "cdtHospSumData",     14,    lagDays,  "Both",
     "cdtHospSumData",     30,    lagDays,  "Both",
+    "cdtHospSumData",     60,    lagDays,  "Both",
+    "cdtHospSumData",     90,    lagDays,  "Both",
     "bi_CDT_MostRecent",  NA,    NA,       "Both"
 )
 
@@ -542,7 +544,8 @@ WDScomparison <- function(rollSumData, measureTable, days, lagDays) {
         dplyr::filter(Date <= (max(Date) - lagDays)) %>% 
         dplyr::group_by(GeoID, Measure) %>% dplyr::mutate(rankID = rank(dplyr::desc(Date))) %>% dplyr::filter(rankID == 1) %>% dplyr::select(-rankID) %>% 
         dplyr::filter(GeoID == 'MARC') %>% dplyr::ungroup() %>% 
-        dplyr::mutate(Days = days) %>% dplyr::rename_with(~stringr::str_remove(.x, "Week"), tidyr::contains("Week"))
+        dplyr::mutate(Days = days) %>% dplyr::rename_with(~stringr::str_remove(.x, "Week"), tidyr::contains("Week")) %>% 
+        dplyr::mutate(Lag = lagDays)
 }
 
 bi_WDS_ComparisonTable <- list(
@@ -553,6 +556,16 @@ bi_WDS_ComparisonTable <- list(
 ) %>% dplyr::bind_rows() %>% 
     dplyr::mutate(ChangeProp = ChangeRatio - 1)
 
+
+
+bi_WDS_HelperTable <- tibble::tribble(
+    ~ID_Name,              ~Date1,                                                                                                                    ~Date2,
+    "CurrentDate",         Sys.Date(),                                                                                                                NA,
+    "ReportCutoffDate",   min(filter(bi_WDS_ComparisonTable, stringr::str_detect(Measure, "^Covid", negate = TRUE))[["Date"]]) + lagDays,             NA,
+    "CDTRange",            min(filter(bi_WDS_ComparisonTable, stringr::str_detect(Measure, "^Covid", negate = TRUE))[["Date"]]) - 6,                  min(filter(bi_WDS_ComparisonTable, stringr::str_detect(Measure, "^Covid", negate = TRUE))[["Date"]]),
+    "HospRange",           min(filter(bi_WDS_ComparisonTable, stringr::str_detect(Measure, "^Covid", negate = FALSE))[["Date"]]) - 6,                 min(filter(bi_WDS_ComparisonTable, stringr::str_detect(Measure, "^Covid", negate = FALSE))[["Date"]])
+    
+)
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
