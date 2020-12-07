@@ -509,14 +509,51 @@ cat(crayon::blue("Exporting Weekly Data Snapshot Data.\n"))
 bi_WDS_7DayRollingLag <- cdtHospSum7DayRollingData %>% dplyr::filter(Date <= max(Date) - lagDays) %>% 
     dplyr::mutate(dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
     dplyr::filter(dayWeek == 4) %>% dplyr::select(-dayWeek) %>% 
-    dplyr::mutate(TestsPositiveNew7DayAvgProportion = CasesNew7DayTotal/dplyr::if_else(TestsNew7DayTotal == 0, NA_integer_, TestsNew7DayTotal)) %>% 
-    dplyr::filter(GeoID %in% c('MARC', '20MARCReg', '29MARCReg'))
-
+    dplyr::mutate(TestsPositive7DayRate = CasesNew7DayTotal/dplyr::if_else(TestsNew7DayTotal == 0, NA_integer_, TestsNew7DayTotal),
+                  DeathsToCases7DayRate = DeathsNew7DayTotal/dplyr::if_else(CasesNew7DayTotal == 0, NA_integer_, CasesNew7DayTotal),
+                  HospsToCases7DayRate = CovidNew7DayTotal/dplyr::if_else(CasesNew7DayTotal == 0, NA_integer_, CasesNew7DayTotal)) %>% 
+    dplyr::filter(GeoID %in% c('MARC', '20MARCReg', '29MARCReg', 'HCC')) %>% 
+    dplyr::select(Jurisdiction, State, Region, GeoID, Date, 
+                  CasesNew7DayTotal, CasesNew7DayAvg, DeathsNew7DayTotal, DeathsNew7DayAvg, TestsNew7DayTotal, TestsNew7DayAvg, 
+                  TestsPositive7DayRate, DeathsToCases7DayRate, HospsToCases7DayRate)
 
 bi_WDS_Last7Days <- bi_WDS_7DayRollingLag %>% 
     dplyr::group_by(GeoID) %>% dplyr::filter(Date == max(Date)) %>% dplyr::ungroup()%>% 
-    dplyr::filter(GeoID == 'MARC')
+    dplyr::filter(GeoID %in% c('MARC', 'HCC'))
 
+WDS_7DayRollingLagHosp <- cdtHospSum7DayRollingData %>% dplyr::filter(Date <= max(Date) - 2) %>% 
+    dplyr::mutate(dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
+    dplyr::filter(dayWeek == 5) %>% dplyr::select(-dayWeek) %>% 
+    dplyr::filter(GeoID %in% c('MARC', 'HCC')) %>% 
+    dplyr::mutate(HospitalsTotal7DayTotal = dplyr::if_else(GeoID == 'MARC', as.integer(27*7), as.integer(HospitalsTotal7DayTotal))) %>% 
+    dplyr::mutate(Hospital7DayReportRate = HospitalsReporting7DayTotal/dplyr::if_else(HospitalsTotal7DayTotal == 0, NA_integer_, HospitalsTotal7DayTotal)) %>%
+    dplyr::select(Jurisdiction, State, Region, GeoID, Date, 
+                  CovidNew7DayTotal, CovidNew7DayAvg, CovidTotal7DayAvg, Hospital7DayReportRate)
+
+
+measureTableCDT <- tibble::tribble(
+    ~measureName,                    ~upGood,
+    "CasesNew7DayAvg",               FALSE,
+    "CasesNew7DayTotal",             FALSE,
+    "DeathsNew7DayAvg",              FALSE,
+    "DeathsNew7DayTotal",            FALSE,
+    "TestsNew7DayAvg",               TRUE,
+    "TestsNew7DayTotal",             TRUE,
+    "TestsPositive7DayRate",         FALSE,
+    "DeathsToCases7DayRate",         FALSE,
+    "HospsToCases7DayRate",          FALSE
+)
+measureTableHosp <- tibble::tribble(
+    ~measureName,                    ~upGood,
+    "CovidTotal7DayAvg",             FALSE,
+    "CovidNew7DayAvg",               FALSE,
+    "CovidNew7DayTotal",             FALSE,
+    "Hospital7DayReportRate",        TRUE
+)
+
+bi_WDS_WeeklyComparison <-  dplyr::bind_rows(dplyr::filter(baseDaysComparison(bi_WDS_7DayRollingLag, measureTableCDT, days = 7, lag = 1), Date >= (max(Date) - 6*7)),
+                                          dplyr::filter(baseDaysComparison(WDS_7DayRollingLagHosp, measureTableHosp, days = 7, lag = 1), Date >= (max(Date) - 6*7))
+) %>% dplyr::filter(GeoID %in% c('MARC', 'HCC'))
 
 
 

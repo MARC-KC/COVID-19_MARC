@@ -449,7 +449,9 @@ COPtable <- function(df, popTable, days, lagDays, measureTable, percentChangeKPI
 # FNs - baseDaysComparison - Creates base weekly comparison data ####
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-baseDaysComparison <- function(rollSumData, measureTable, days = 7) {
+baseDaysComparison <- function(rollSumData, measureTable, days = 7, lag = NULL) {
+  
+  if (is.null(lag)) lag <- days
   
   measureTable <- measureTable %>% dplyr::mutate(measureName = stringr::str_replace(measureName, "##", as.character(days)))
   
@@ -460,7 +462,7 @@ baseDaysComparison <- function(rollSumData, measureTable, days = 7) {
     dplyr::select(Jurisdiction, State, Region, GeoID, Date, Measure, CurrentWeekValue) %>% 
     dplyr::mutate(DatePrev = Date - days) %>% 
     dplyr::group_by(GeoID) %>% 
-    dplyr::mutate(PreviousWeekValue = dplyr::lag(CurrentWeekValue, n = length(unique(Measure))*days, order_by = Date)) %>% 
+    dplyr::mutate(PreviousWeekValue = dplyr::lag(CurrentWeekValue, n = length(unique(Measure))*lag, order_by = Date)) %>% 
     dplyr::mutate(WeekChange = CurrentWeekValue - PreviousWeekValue,
                   WeekChangeRatio = CurrentWeekValue/dplyr::if_else(PreviousWeekValue == 0, NA_real_, PreviousWeekValue)) %>% 
     dplyr::mutate(WeekChangeRatio = dplyr::if_else(WeekChange == 0 & PreviousWeekValue == 0, 1, WeekChangeRatio)) %>% 
