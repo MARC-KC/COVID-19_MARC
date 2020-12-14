@@ -521,10 +521,10 @@ bi_WDS_Last7Days <- bi_WDS_7DayRollingLag %>%
     dplyr::group_by(GeoID) %>% dplyr::filter(Date == max(Date)) %>% dplyr::ungroup()%>% 
     dplyr::filter(GeoID %in% c('MARC', 'HCC'))
 
-WDS_7DayRollingLagHosp <- cdtHospSum7DayRollingData %>% dplyr::filter(Date <= max(Date) - 2) %>% 
+bi_WDS_7DayRollingLagHosp <- cdtHospSum7DayRollingData %>% dplyr::filter(Date <= max(Date) - 2) %>% 
     dplyr::mutate(dayWeek = as.numeric(format(Date, format = "%u"))) %>% 
     dplyr::filter(dayWeek == 5) %>% dplyr::select(-dayWeek) %>% 
-    dplyr::filter(GeoID %in% c('MARC', 'HCC')) %>% 
+    dplyr::filter(GeoID %in% c('MARC', '20MARCReg', '29MARCReg', 'HCC')) %>% 
     dplyr::mutate(HospitalsTotal7DayTotal = dplyr::if_else(GeoID == 'MARC', as.integer(27*7), as.integer(HospitalsTotal7DayTotal))) %>% 
     dplyr::mutate(Hospital7DayReportRate = HospitalsReporting7DayTotal/dplyr::if_else(HospitalsTotal7DayTotal == 0, NA_integer_, HospitalsTotal7DayTotal)) %>%
     dplyr::select(Jurisdiction, State, Region, GeoID, Date, 
@@ -552,7 +552,7 @@ measureTableHosp <- tibble::tribble(
 )
 
 bi_WDS_WeeklyComparison <-  dplyr::bind_rows(dplyr::filter(baseDaysComparison(bi_WDS_7DayRollingLag, measureTableCDT, days = 7, lag = 1), Date >= (max(Date) - 6*7)),
-                                          dplyr::filter(baseDaysComparison(WDS_7DayRollingLagHosp, measureTableHosp, days = 7, lag = 1), Date >= (max(Date) - 6*7))
+                                          dplyr::filter(baseDaysComparison(bi_WDS_7DayRollingLagHosp, measureTableHosp, days = 7, lag = 1), Date >= (max(Date) - 6*7))
 ) %>% dplyr::filter(GeoID %in% c('MARC', 'HCC'))
 
 
@@ -603,6 +603,12 @@ bi_WDS_HelperTable <- tibble::tribble(
     "HospRange",           min(filter(bi_WDS_ComparisonTable, stringr::str_detect(Measure, "^Covid", negate = FALSE))[["Date"]]) - 6,                 min(filter(bi_WDS_ComparisonTable, stringr::str_detect(Measure, "^Covid", negate = FALSE))[["Date"]])
     
 )
+
+bi_WDS_HospitalDailyData <- bi_HospitalDailyData %>% 
+    dplyr::mutate(dayWeek = as.numeric(format(EntryDate, format = "%u"))) %>%
+    dplyr::filter(EntryDate <= max(EntryDate[dayWeek==7])-2) %>% 
+    dplyr::select(-dayWeek)
+
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
