@@ -43,13 +43,17 @@ downloadBaseData <- function(type = c("CDT", "Hospital"), source = "COVIDv2REST"
 # FN - sumNA - Special sum function that defaults na.rm to TRUE ####
 #  Used within summarizeCDT ####
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-sumNA <- function(vec) {
-  if (all(is.na(vec))) {
-    return(NA_integer_)
-  } else {
-    return(base::sum(vec, na.rm = TRUE))
-  }
-}
+# sumNA <- function(vec) {
+#   if (all(is.na(vec))) {
+#     if (class(vec) == "integer") {
+#       return(NA_integer_)
+#     } else if (class(vec) %in% c("numeric", "double")) {
+#       return(NA_real_)
+#     }
+#   } else {
+#     return(base::sum(vec, na.rm = TRUE))
+#   }
+# }
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -58,13 +62,13 @@ sumNA <- function(vec) {
 # FN - mutateCalcString - Allows a mutation given a string for the caclulation side of the mutation ####
 #  Used within rollAvgXDays and COPtable####
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-mutateCalcString <- function(df, mutateName, mutateCalc) {
-  mutateString = glue::glue("df${mutateName} = with(df, ({mutateCalc}))")
-  for (i in 1:length(mutateString)) {
-    eval(parse(text=mutateString[i]))
-  }
-  return(df)
-} 
+# mutateCalcString <- function(df, mutateName, mutateCalc) {
+#   mutateString = glue::glue("df${mutateName} = with(df, ({mutateCalc}))")
+#   for (i in 1:length(mutateString)) {
+#     eval(parse(text=mutateString[i]))
+#   }
+#   return(df)
+# } 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
