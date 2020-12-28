@@ -278,13 +278,17 @@ baseWeeklyComparisonData <- cdtHospSum7DayRollingData %>%
 
 bi_7DayComparison_MostRecent <- baseWeeklyComparisonData %>% 
     dplyr::group_by(GeoID, Measure) %>% dplyr::mutate(rankID = rank(dplyr::desc(Date))) %>% dplyr::filter(rankID == 1) %>% dplyr::select(-rankID) %>% 
-    dplyr::filter(GeoID %in% GeoIDs_base)
+    dplyr::filter(GeoID %in% GeoIDs_base) %>% 
+    dplyr::mutate(WeekChangeProp = WeekChangeRatio - 1)
 
 bi_7DayComparison_MostRecent_Lag <- baseWeeklyComparisonData %>% dplyr::filter(Date <= (max(Date) - lagDays)) %>% 
     dplyr::group_by(GeoID, Measure) %>% dplyr::mutate(rankID = rank(dplyr::desc(Date))) %>% dplyr::filter(rankID == 1) %>% dplyr::select(-rankID) %>% 
     dplyr::filter(GeoID %in% GeoIDs_base)
 
-
+bi_7DayComparison_MostRecent_HospLag <- baseWeeklyComparisonData %>% dplyr::filter(Date <= (max(Date) - 2)) %>% 
+    dplyr::group_by(GeoID, Measure) %>% dplyr::mutate(rankID = rank(dplyr::desc(Date))) %>% dplyr::filter(rankID == 1) %>% dplyr::select(-rankID) %>% 
+    dplyr::filter(GeoID %in% GeoIDs_base) %>% 
+    dplyr::mutate(WeekChangeProp = WeekChangeRatio - 1)
 
 
 bi_7DayComparison_Last6Weeks <- baseWeeklyComparisonData %>% dplyr::filter(Date >= (max(Date, na.rm = TRUE) - lubridate::weeks(6)))
@@ -324,6 +328,11 @@ bi_HospitalDailyData <- hospSumData %>%
                   VentilatorsUsedOtherProportion = VentilatorsUsedOther/dplyr::if_else(VentilatorsTotalCalc == 0, NA_integer_, VentilatorsTotalCalc),
                   CovidVentilatorsUsedProportion = CovidVentilatorsUsed/dplyr::if_else(VentilatorsTotalCalc == 0, NA_integer_, VentilatorsTotalCalc)
     ) %>% dplyr::filter(GeoID %in% GeoIDs_base[!(GeoIDs_base %in% GeoIDs_restrictHospital)])
+
+#HospitalTotal based on a 3 week window so that it can adapt to reporting over time
+bi_HospitalDailyData <- bi_HospitalDailyData %>%  dplyr::mutate(
+        HospitalsTotal = purrr::map2_int(GeoID, EntryDate, ~dplyr::filter(bi_HospitalDailyData, GeoID == .x & EntryDate >= .y - 10 & EntryDate <= .y + 10)[['HospitalsReporting']] %>% max(., na.rm = TRUE) %>% as.integer())
+    )
 
 bi_HospitalMostRecent <- bi_HospitalDailyData %>% dplyr::group_by(GeoID) %>% dplyr::mutate(rankID = rank(dplyr::desc(EntryDate))) %>% dplyr::filter(rankID == 1) %>% dplyr::select(-rankID)
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
