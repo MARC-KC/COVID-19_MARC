@@ -4,6 +4,7 @@ This repository holds all the code [MARC](https://www.marc.org/) uses to keep th
 
 ## How to use this repository?
 
+If you just want to download the base datasets from our the COVIDv2 Map Server [Click Here]()
 
 ![How to download](https://github.com/MARC-KC/COVID-19_MARC/blob/main/.READMEfiles/HowToDownloadRepository.png)
 
